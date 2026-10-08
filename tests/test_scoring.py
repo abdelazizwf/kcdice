@@ -1,6 +1,13 @@
 import pytest
 
-from kcdice.scoring import is_bust, score
+from kcdice.scoring import (
+    best_selection,
+    describe,
+    is_bust,
+    positions_for_values,
+    score,
+    scoring_positions,
+)
 
 
 @pytest.mark.parametrize(
@@ -62,3 +69,58 @@ def test_not_bust(dice):
 )
 def test_bust(dice):
     assert is_bust(dice)
+
+
+@pytest.mark.parametrize(
+    ("dice", "expected"),
+    [
+        ([1], "Single 1"),
+        ([5, 5], "Two 5s"),
+        ([2, 2, 2], "Three 2s"),
+        ([2, 2, 2, 1], "Single 1 + Three 2s"),
+        ([1, 2, 3, 4, 5], "Straight 1-5"),
+        ([1, 2, 3, 4, 5, 1], "Straight 1-5 + Single 1"),
+        ([1, 2, 3, 4, 5, 6], "Full straight"),
+        ([2, 3], "No score"),
+        ([], "No score"),
+    ],
+)
+def test_describe(dice, expected):
+    assert describe(dice) == expected
+
+
+@pytest.mark.parametrize(
+    ("dice", "expected"),
+    [
+        ([2, 3, 4, 6], set()),
+        ([2, 5, 1, 3, 1, 6], {2, 3, 5}),
+        ([2, 5, 1, 3, 1, 4], {1, 2, 3, 4, 5, 6}),
+        ([2, 2, 2, 3], {1, 2, 3}),
+        ([2, 3, 4, 5, 6, 6], {1, 2, 3, 4, 5, 6}),
+    ],
+)
+def test_scoring_positions(dice, expected):
+    assert scoring_positions(dice) == expected
+
+
+def test_positions_for_values():
+    assert positions_for_values([2, 5, 1, 5, 1], [5, 1, 5]) == [2, 3, 4]
+
+
+def test_positions_for_values_missing_value():
+    with pytest.raises(ValueError, match="No 5"):
+        positions_for_values([5, 1], [5, 5])
+
+
+@pytest.mark.parametrize(
+    ("dice", "expected"),
+    [
+        ([2, 3, 4, 6], []),
+        ([2, 5, 1, 3, 1, 6], [2, 3, 5]),
+        ([2, 2, 2, 5, 3, 4], [1, 2, 3, 4]),
+        ([2, 3, 4, 5, 6, 6], [1, 2, 3, 4, 5]),
+        ([1, 2, 3, 4, 5, 6], [1, 2, 3, 4, 5, 6]),
+    ],
+)
+def test_best_selection(dice, expected):
+    assert best_selection(dice) == expected

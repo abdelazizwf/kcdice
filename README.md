@@ -6,10 +6,29 @@ Kingdom Come: Deliverance.
 ## Run
 
 ```
-uv run kcdice                       # prompts for players and target score
+uv run kcdice                       # full-screen UI, asks for names and target
 uv run kcdice -p 2 -t 2000          # two players, first to 2000
 uv run kcdice --seed 42             # reproducible rolls
+uv run kcdice --plain               # simple prompt-based interface
 ```
+
+The full-screen UI (built with [Textual](https://textual.textualize.io/)) is
+used when running in a terminal; otherwise, or with `--plain`, the game falls
+back to line-based prompts.
+
+### Controls
+
+| Key                   | Action                                      |
+| --------------------- | ------------------------------------------- |
+| left / right, click   | move the cursor / pick a die                |
+| space, `1`-`6`        | toggle the cursor die / die number          |
+| `a`                   | auto-select the best scoring dice           |
+| enter                 | keep the selected dice (or pass after bust) |
+| `r` / `b`             | roll again / bank the turn score            |
+| `?` / `q`             | rules / quit                                |
+
+Dice with a green border can contribute to a score, and the selection's score
+is previewed before you keep it.
 
 ## Rules
 
@@ -29,7 +48,8 @@ player to reach the target score (default 4000) wins immediately.
 
 ## Layout
 
-- `scoring.py` - pure scoring and bust rules
+- `scoring.py` - pure scoring, bust rules and selection helpers
 - `player.py` - player state and turn actions
 - `game.py` - turn order and win condition
-- `cli.py` - all terminal input/output
+- `tui.py` / `kcdice.tcss` - full-screen Textual interface
+- `cli.py` - argument parsing and the plain prompt interface

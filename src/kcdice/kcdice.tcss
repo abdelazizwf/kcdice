@@ -1,0 +1,118 @@
+Screen {
+    background: $surface;
+}
+
+#main {
+    height: 1fr;
+}
+
+#left {
+    width: 1fr;
+    padding: 0 1;
+}
+
+#right {
+    width: 34;
+    padding: 0 1;
+}
+
+.-narrow #main {
+    layout: vertical;
+}
+
+.-narrow #left {
+    height: auto;
+    width: 100%;
+}
+
+.-narrow #right {
+    width: 100%;
+    height: 1fr;
+}
+
+#status {
+    height: 3;
+    content-align: left middle;
+    padding: 1 1 0 1;
+    text-style: bold;
+}
+
+#dice {
+    height: 8;
+    margin-top: 1;
+}
+
+DieWidget {
+    width: 11;
+    height: 7;
+    margin: 0 1 0 0;
+    border: round $primary;
+    content-align: center middle;
+    text-align: center;
+}
+
+DieWidget.scoreable {
+    border: round $success;
+}
+
+DieWidget.selected {
+    border: heavy $warning;
+    background: $warning 25%;
+}
+
+DieWidget.cursor {
+    border: thick $foreground;
+}
+
+DieWidget.dimmed {
+    opacity: 60%;
+}
+
+DieWidget.bust {
+    border: round $error;
+    opacity: 70%;
+}
+
+#preview {
+    height: 3;
+    padding: 1 1 0 1;
+}
+
+#scores {
+    height: auto;
+    max-height: 12;
+}
+
+#log {
+    margin-top: 1;
+    border: round $primary-darken-2;
+}
+
+SetupScreen, WinScreen, HelpScreen {
+    align: center middle;
+}
+
+.dialog {
+    width: 60;
+    height: auto;
+    padding: 1 2;
+    border: thick $primary;
+    background: $panel;
+}
+
+.dialog Label {
+    margin-top: 1;
+}
+
+.dialog Horizontal {
+    height: auto;
+    margin-top: 1;
+}
+
+.dialog Button {
+    margin-right: 2;
+}
+
+#setup-error {
+    color: $error;
+}

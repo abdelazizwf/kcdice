@@ -1,5 +1,6 @@
 import argparse
 import random
+import sys
 
 from kcdice import scoring
 from kcdice.game import DEFAULT_TARGET, Game
@@ -87,11 +88,29 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=f"score needed to win (default {DEFAULT_TARGET})",
     )
     parser.add_argument("--seed", type=int, help="seed for reproducible rolls")
+    parser.add_argument(
+        "--plain",
+        action="store_true",
+        help="use the plain prompt interface instead of the full-screen UI",
+    )
     return parser.parse_args(argv)
+
+
+def run_tui(args: argparse.Namespace):
+    from kcdice.tui import KCDiceApp
+
+    game = None
+    if args.players or args.target:
+        players = [Player(f"Player {i}") for i in range(1, (args.players or 1) + 1)]
+        game = Game(players, args.target or DEFAULT_TARGET, random.Random(args.seed))
+    KCDiceApp(game, seed=args.seed).run()
 
 
 def main(argv: list[str] | None = None):
     args = parse_args(argv)
+    if not args.plain and sys.stdin.isatty() and sys.stdout.isatty():
+        run_tui(args)
+        return
     try:
         n_players = args.players or ask_int("Number of players", 1)
         target = args.target or ask_int("Score to win", DEFAULT_TARGET)
