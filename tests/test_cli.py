@@ -106,3 +106,37 @@ def test_main_aborts_cleanly_on_eof(monkeypatch, capsys):
 def test_parse_args_rejects_non_integers(flag):
     with pytest.raises(SystemExit):
         cli.parse_args([flag, "abc"])
+
+
+def test_parse_args_bots():
+    assert cli.parse_args([]).bots == 0
+    assert cli.parse_args(["--bots", "2"]).bots == 2
+
+
+def test_make_players_adds_bots_after_humans():
+    players = cli.make_players(2, 1)
+    assert [p.name for p in players] == ["Player 1", "Player 2", "Bot 1"]
+    assert [p.is_bot for p in players] == [False, False, True]
+
+
+def test_plain_bot_turn_prints_each_step(monkeypatch, capsys):
+    game = Game(cli.make_players(0, 1))
+    rolls = iter([[1, 2, 3, 4, 6, 6], [5, 5, 5, 3, 4]])
+    monkeypatch.setattr(game, "roll", lambda: next(rolls))
+    cli.play_turn(game)
+    out = capsys.readouterr().out
+    assert "Bot 1's turn" in out
+    assert "Rolled [1, 2, 3, 4, 6, 6]" in out
+    assert "(+100)" in out
+    assert "Bot 1 banks 600 points." in out
+    assert game.players[0].current_score == 600
+
+
+def test_plain_run_alternates_human_and_bot(monkeypatch, capsys):
+    game = Game(cli.make_players(1, 1), max_score=500)
+    rolls = iter([[1, 2, 3, 4, 6, 6]] + [[5, 5, 5, 3, 4]] + [[2, 3, 4, 6, 2, 3]] * 5)
+    monkeypatch.setattr(game, "roll", lambda: next(rolls))
+    feed(monkeypatch, "1", "2", "1 2 3", "1")  # human: keep 1, roll, keep 555, bank
+    cli.run(game)
+    out = capsys.readouterr().out
+    assert "Player 1 wins" in out

@@ -186,3 +186,94 @@ async def test_enter_works_even_if_the_scoreboard_is_focused():
         await pilot.press("1", "enter")
         assert app.phase is Phase.KEPT
         assert app.focused is None
+
+
+def make_bot_app(rolls, target=4000, humans=1):
+    from kcdice.bot import ThresholdStrategy
+
+    players = [Player(f"P{i}") for i in range(humans)]
+    players.append(Player("Bot", strategy=ThresholdStrategy()))
+    game = Game(players, target)
+    queue = iter(rolls)
+    game.roll = lambda: next(queue)
+    return KCDiceApp(game, animate=False, bot_delay=0)
+
+
+async def settle(pilot, app):
+    for _ in range(50):
+        await pilot.pause(0.02)
+        if app.phase is not Phase.BOT:
+            return
+
+
+async def test_bot_plays_after_the_human_banks():
+    rolls = [[1, 2, 3, 4, 6, 6], [5, 5, 5, 3, 4, 6], [1, 5, 5, 3, 4, 6]]
+    app = make_bot_app([[1, 2, 3, 4, 6, 6], *rolls[1:]])
+    async with app.run_test() as pilot:
+        await pilot.press("1", "enter", "b")
+        await settle(pilot, app)
+        bot = app.game.players[1]
+        assert bot.current_score == 500
+        assert app.player is app.game.players[0]
+        assert app.phase is Phase.SELECTING
+        assert app.game.players[0].current_score == 100
+
+
+async def test_bot_bust_returns_control_to_the_human():
+    app = make_bot_app([[1, 2, 3, 4, 6, 6], [2, 3, 4, 6, 2, 3], [1, 2, 3, 4, 6, 6]])
+    async with app.run_test() as pilot:
+        await pilot.press("1", "enter", "b")
+        await settle(pilot, app)
+        assert app.player is app.game.players[0]
+        assert app.phase is Phase.SELECTING
+        assert app.game.players[1].current_score == 0
+
+
+async def test_human_keys_are_ignored_during_a_bot_turn():
+    app = make_bot_app([[1, 2, 3, 4, 6, 6], [2, 3, 4, 6, 2, 3]])
+    app.bot_delay = 30
+    async with app.run_test() as pilot:
+        await pilot.press("1", "enter", "b")
+        assert app.phase is Phase.BOT
+        await pilot.press("space", "r", "b", "1")
+        assert app.phase is Phase.BOT
+        assert app.selection == set()
+
+
+async def test_bot_winning_shows_the_win_screen():
+    app = make_bot_app([[1, 2, 3, 4, 6, 6], [1, 1, 1, 3, 4, 6]], target=1000)
+    async with app.run_test() as pilot:
+        await pilot.press("1", "enter", "b")
+        await settle(pilot, app)
+        assert app.phase is Phase.OVER
+        assert isinstance(app.screen, WinScreen)
+
+
+async def test_new_game_keeps_the_bots():
+    app = make_bot_app([[1, 2, 3, 4, 6, 6], [1, 1, 1, 3, 4, 6]], target=1000)
+    async with app.run_test() as pilot:
+        await pilot.press("1", "enter", "b")
+        await settle(pilot, app)
+        app.game.roll = lambda: [1, 2, 3, 4, 6, 6]
+        await pilot.click("#new")
+        await pilot.pause()
+        assert [p.is_bot for p in app.game.players] == [False, True]
+
+
+async def test_setup_screen_adds_computer_players():
+    app = KCDiceApp(None, seed=1, animate=False, bot_delay=30)
+    async with app.run_test() as pilot:
+        app.screen.query_one("#names").value = "Ann"
+        app.screen.query_one("#bots").value = "2"
+        await pilot.click("#start")
+        await pilot.pause()
+        assert [p.name for p in app.game.players] == ["Ann", "Bot 1", "Bot 2"]
+        assert [p.is_bot for p in app.game.players] == [False, True, True]
+
+
+async def test_setup_screen_needs_at_least_one_player():
+    app = KCDiceApp(None, animate=False)
+    async with app.run_test() as pilot:
+        app.screen.query_one("#names").value = ""
+        await pilot.click("#start")
+        assert isinstance(app.screen, SetupScreen)

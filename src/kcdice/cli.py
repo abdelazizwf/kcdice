@@ -3,6 +3,14 @@ import random
 import sys
 
 from kcdice import scoring
+from kcdice.bot import (
+    Banked,
+    Busted,
+    Kept,
+    Rolled,
+    ThresholdStrategy,
+    play_bot_turn,
+)
 from kcdice.game import DEFAULT_TARGET, Game
 from kcdice.player import InvalidSelection, Player
 
@@ -40,9 +48,28 @@ def select_dice(player: Player, dice: list[int]):
             print(f"{message}\n")
 
 
+def play_bot_turn_plain(game: Game):
+    for event in play_bot_turn(game):
+        match event:
+            case Rolled(dice):
+                print(f"Rolled {dice}")
+            case Kept(dice, positions, score, hot_dice):
+                kept = [dice[p - 1] for p in positions]
+                print(f"Kept {kept}: {scoring.describe(kept)} (+{score})")
+                if hot_dice:
+                    print("Hot dice!")
+            case Busted(dice, lost):
+                print(f"Rolled {dice}: bust! Lost {lost} points.")
+            case Banked(points):
+                print(f"{game.current_player.name} banks {points} points.")
+
+
 def play_turn(game: Game):
     player = game.current_player
     print(f"\n--- {player.name}'s turn ---")
+    if player.is_bot:
+        play_bot_turn_plain(game)
+        return
     while True:
         dice = game.roll()
         if scoring.is_bust(dice):
@@ -87,6 +114,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=int,
         help=f"score needed to win (default {DEFAULT_TARGET})",
     )
+    parser.add_argument(
+        "-b",
+        "--bots",
+        type=int,
+        default=0,
+        help="number of computer players (added after the human players)",
+    )
     parser.add_argument("--seed", type=int, help="seed for reproducible rolls")
     parser.add_argument(
         "--plain",
@@ -96,12 +130,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def make_players(n_humans: int, n_bots: int) -> list[Player]:
+    players = [Player(f"Player {i}") for i in range(1, n_humans + 1)]
+    players += [
+        Player(f"Bot {i}", strategy=ThresholdStrategy()) for i in range(1, n_bots + 1)
+    ]
+    return players
+
+
 def run_tui(args: argparse.Namespace):
     from kcdice.tui import KCDiceApp
 
     game = None
-    if args.players or args.target:
-        players = [Player(f"Player {i}") for i in range(1, (args.players or 1) + 1)]
+    if args.players or args.target or args.bots:
+        players = make_players(args.players or 1, args.bots)
         game = Game(players, args.target or DEFAULT_TARGET, random.Random(args.seed))
     KCDiceApp(game, seed=args.seed).run()
 
@@ -114,7 +156,7 @@ def main(argv: list[str] | None = None):
     try:
         n_players = args.players or ask_int("Number of players", 1)
         target = args.target or ask_int("Score to win", DEFAULT_TARGET)
-        players = [Player(f"Player {i}") for i in range(1, n_players + 1)]
+        players = make_players(n_players, args.bots)
         game = Game(players, target, random.Random(args.seed))
         run(game)
     except (KeyboardInterrupt, EOFError):

@@ -1,7 +1,11 @@
 import random
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from kcdice import scoring
+
+if TYPE_CHECKING:
+    from kcdice.bot import Strategy
 
 
 class InvalidSelection(ValueError):
@@ -15,12 +19,22 @@ class SelectionResult:
 
 
 class Player:
-    def __init__(self, name: str = "Player", n_dice: int = 6):
+    def __init__(
+        self,
+        name: str = "Player",
+        n_dice: int = 6,
+        strategy: "Strategy | None" = None,
+    ):
         self.name = name
+        self.strategy = strategy
         self.n_dice = n_dice
         self.current_score = 0
         self.temp_score = 0
         self.available_dice = n_dice
+
+    @property
+    def is_bot(self) -> bool:
+        return self.strategy is not None
 
     def roll(self, rng: random.Random | None = None) -> list[int]:
         rng = rng or random
